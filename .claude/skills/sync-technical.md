@@ -4,8 +4,9 @@ description: 每次代码变更后，同步更新 technical.md 技术文档
 type: feedback
 ---
 
-1. 严格参考 `.ai/skills/skills.md` 规范。
+1. 功能实现 严格参考 `.ai/docs/plan.md` 规范。
 2. 每次对代码进行变更后，必须检查并同步更新 `.ai/docs/technical.md`，确保文档与代码保持一致。
+3. 每次对代码进行变更后，必须检查并同步更新 `README.md`，确保文档对应区域与代码功能一致。
 
 ## 需要同步的内容
 

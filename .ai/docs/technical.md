@@ -369,8 +369,8 @@ OPENAI_API_KEY=sk-xxxxx
 OPENAI_MODEL=gpt-4o
 
 # 服务配置
-PORT=3001
-CORS_ORIGIN=http://localhost:5173
+PORT=3000
+CORS_ORIGIN=http://localhost:3721
 ```
 
 ---
@@ -396,8 +396,8 @@ cp apps/api/.env.example apps/api/.env
 pnpm dev
 
 # 单独启动
-pnpm --filter api dev    # 后端 http://localhost:3001
-pnpm --filter web dev    # 前端 http://localhost:5173
+pnpm --filter api dev    # 后端 http://localhost:3000
+pnpm --filter web dev    # 前端 http://localhost:3721
 ```
 
 ### 构建

@@ -78,7 +78,7 @@ pnpm dev
 pnpm --filter api dev
 ```
 
-默认监听 `http://localhost:3001`，并设置了全局前缀 `/api`，因此基础访问地址为：`http://localhost:3001/api`。
+默认监听 `http://localhost:3000`，并设置了全局前缀 `/api`，因此基础访问地址为：`http://localhost:3000/api`。
 
 ## 环境变量
 
@@ -86,8 +86,8 @@ pnpm --filter api dev
 
 ```bash
 # apps/api/.env
-PORT=3001
-CORS_ORIGIN=http://localhost:5173
+PORT=3000
+CORS_ORIGIN=http://localhost:3721
 ```
 
 大模型相关环境变量在完整翻译链路实现后使用（设计如下）：
