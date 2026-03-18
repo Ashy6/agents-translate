@@ -1,188 +1,184 @@
 # 职能沟通翻译助手（agents-translate）
 
-**线上地址：** [translate.rowlandw3ai.shop](https://translate.rowlandw3ai.shop)
+**线上地址：** [communicate.singulay.online](https://communicate.singulay.online/)
 
-在企业协作中，产品经理（PM）与开发工程师（DEV）常因表达视角不同而产生理解偏差。本项目旨在通过大模型将两类输入进行”双向翻译”，让需求与技术结论都能以对方更容易理解、可直接使用的结构化方式呈现。
+在企业协作中，产品经理（PM）与开发工程师（DEV）常因表达视角不同而产生理解偏差。本项目通过 AI 大模型实现双向翻译，让需求与技术方案都能以对方能直接使用的结构化语言呈现。
 
 ## 核心能力
 
-- PM → DEV：把业务需求翻译为可落地的技术描述（方案、数据、性能、工作量、待确认点）
-- DEV → PM：把技术方案/技术结论翻译为业务语言（体验影响、业务价值、增长空间、风险提示）
-- 结构化输出：以 Markdown 分段输出，便于复制与复用
-- 流式输出（规划）：通过 SSE 边生成边展示
-- 自动识别输入视角（规划）：不选方向时自动判断并选择翻译路径
-- 主动补全缺失信息（规划）：在结果中标注缺失点并给出追问建议
+- **PM → DEV**：把业务需求翻译为可落地的技术描述（方案、性能要求、工作量、待确认点）
+- **DEV → PM**：把技术方案/结论翻译为业务语言（体验影响、业务价值、风险提示）
+- **自动识别**：不选方向时自动判断输入来自 PM 还是 DEV，选择翻译路径
+- **流式输出**：通过 SSE 边生成边展示，首字延迟 < 2s
+- **会话隔离**：三个方向各维护独立输入/输出，切换后内容保留
 
-## 使用说明流程图
+## 使用说明
 
 ```mermaid
 flowchart TD
-  U[用户] --> W[Web 页面]
-  W --> D{选择方向?}
-  D -->|PM → DEV| IN[输入业务需求]
-  D -->|DEV → PM| IN[输入技术内容]
-  D -->|AUTO| IN[输入任意内容]
-  IN --> CTX[可选：补充上下文 context]
-  CTX --> MODE{输出模式}
-
-  MODE -->|普通| API1[POST /api/translate]
-  MODE -->|流式| API2[GET /api/translate/stream（SSE）]
-
-  API1 --> VAL[参数校验：content <= 2000]
-  API2 --> VAL
-  VAL --> AG[Agent 调度]
-
-  AG --> AUTO{direction = AUTO?}
-  AUTO -->|是| DET[detect_perspective]
-  AUTO -->|否| PERS[使用用户选择方向]
-  DET --> PERS
-
-  PERS --> MISS[supplement_missing_info]
-  MISS --> ROUTE{最终方向}
-  ROUTE -->|PM → DEV| TDEV[translate_to_developer]
-  ROUTE -->|DEV → PM| TPM[translate_to_product]
-  TDEV --> FMT[format_output]
-  TPM --> FMT
-
-  FMT --> OUT[结构化 Markdown 结果]
-  OUT --> UI[前端渲染 + 复制]
-  VAL -->|异常/超时| ERR[错误提示]
-  ERR --> UI
+    A([用户输入]) --> B{选择翻译方向}
+    B -->|PM → DEV| C[输入业务需求]
+    B -->|DEV → PM| D[输入技术方案]
+    B -->|自动识别| E[输入任意内容]
+    E --> F[detect_perspective\n识别输入视角]
+    F -->|PM| C
+    F -->|DEV| D
+    C --> G[translate_to_developer\n翻译为技术语言]
+    D --> H[translate_to_product\n翻译为业务语言]
+    G --> I[SSE 流式返回]
+    H --> I
+    I --> J([前端实时渲染])
+    style F fill:#f0f4ff,stroke:#93c5fd
+    style G fill:#f0fdf4,stroke:#86efac
+    style H fill:#fdf4ff,stroke:#d8b4fe
+    style I fill:#fff7ed,stroke:#fdba74
 ```
 
-## 仓库状态
-
-- 当前包含：需求/技术设计文档、NestJS 后端骨架（`apps/api`）
-- 待补齐：TranslateController/TranslateService、LangChain Agent/Tools、前端 Web 应用（详见技术文档中的目录结构与模块设计）
-
-## 快速开始（当前可运行的后端骨架）
+## 快速开始
 
 ### 环境要求
 
 - Node.js >= 20
-- pnpm（建议 >= 9）
+- pnpm >= 9
 
-### 安装依赖
+### 安装
 
 ```bash
 pnpm install
+```
+
+### 配置
+
+编辑 `apps/api/.env`：
+
+```bash
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxx  # 必填
+OPENAI_MODEL=gpt-4o                 # 可选，默认 gpt-4o
+PORT=3000
+CORS_ORIGIN=http://localhost:3721
 ```
 
 ### 启动
 
 ```bash
 pnpm dev
+# 前端 http://localhost:3721
+# 后端 http://localhost:3000
 ```
 
-或仅启动后端：
-
-```bash
-pnpm --filter api dev
-```
-
-默认监听 `http://localhost:3000`，并设置了全局前缀 `/api`，因此基础访问地址为：`http://localhost:3000/api`。
-
-## 环境变量
-
-后端支持通过环境变量配置端口与 CORS：
-
-```bash
-# apps/api/.env
-PORT=3000
-CORS_ORIGIN=http://localhost:3721
-```
-
-大模型相关环境变量在完整翻译链路实现后使用（设计如下）：
-
-```bash
-# 大模型提供商（anthropic | openai）
-LLM_PROVIDER=anthropic
-
-# Anthropic
-ANTHROPIC_API_KEY=sk-ant-xxxxx
-ANTHROPIC_MODEL=claude-sonnet-4-6
-
-# OpenAI（备选）
-OPENAI_API_KEY=sk-xxxxx
-OPENAI_MODEL=gpt-4o
-```
-
-## API 设计（按技术文档规划）
+## API
 
 ### POST /api/translate
 
-Request：
-
 ```json
-{
-  "content": "我们需要一个智能推荐功能...",
-  "direction": "PM_TO_DEV",
-  "context": "电商平台"
-}
-```
+// Request
+{ "content": "我们需要一个智能推荐功能", "direction": "PM_TO_DEV" }
 
-Response：
-
-```json
-{
-  "result": "## 技术实现方案\n...",
-  "direction": "PM_TO_DEV",
-  "detectedPerspective": "PM",
-  "missingInfo": ["冷启动用户策略", "推荐内容过滤规则"]
-}
+// Response
+{ "result": "**一句话总结：** ...\n\n**更多详细信息：** ..." }
 ```
 
 ### GET /api/translate/stream（SSE）
 
 Query Params：`content`, `direction`, `context`
 
-SSE Event（示意）：
-
-```
-data: {"token":"##"}
-data: {"token":" 技术实现方案"}
-data: {"done":true,"missingInfo":[...]}
+```text
+data: {"token": "**一句话"}
+data: {"token": "总结：**"}
+data: {"done": true}
 ```
 
-## 测试用例（示例）
+## 部署方案
 
-### 用例 1：PM → DEV
+### 架构
 
-输入：
+```text
+Cloudflare Pages (前端)  →  Cloudflare Workers (后端 API)  →  OpenAI API
+```
 
-> 我们需要一个智能推荐功能，提升用户停留时长。推荐用户可能感兴趣的内容，要求个性化，响应要快。
+| 服务     | 平台               | 地址                                                                |
+| -------- | ------------------ | ------------------------------------------------------------------- |
+| 前端     | Cloudflare Pages   | [communicate.singulay.online](https://communicate.singulay.online/) |
+| 后端 API | Cloudflare Workers | agents-translate-api.rowlandw3ai.shop                               |
 
-期望输出包含（示例维度）：
+### 部署前端（Cloudflare Pages）
 
-- 推荐的技术实现方案（算法/架构/取舍）
-- 数据来源与处理方式
-- 性能与实时性要求（如 P99 指标、离线/实时策略）
-- 工作量预估（T 恤尺码或工作日）
-- 缺失信息与待确认决策点（如冷启动、已读过滤）
+```bash
+# 构建
+pnpm --filter web build
 
-### 用例 2：DEV → PM
+# 部署
+cd apps/api && pnpm wrangler pages deploy ../web/dist --project-name agents-translate --branch main
+```
 
-输入：
+### 部署后端（Cloudflare Workers）
 
-> 我们优化了数据库查询，增加了复合索引，QPS 从 1000 提升到 1300，P99 延迟从 800ms 降至 200ms。
+```bash
+cd apps/api
 
-期望输出包含（示例维度）：
+# 首次：登录 & 设置密钥
+pnpm wrangler login
+pnpm wrangler secret put OPENAI_API_KEY
 
-- 用户体验影响（更快、更稳定，以数字/类比解释）
-- 业务价值（承载能力提升、成本节省等）
-- 增长潜力（可支持更高并发/更大促销活动等）
-- 风险与注意事项（例如仍需压测、回滚方案等）
+# 部署
+pnpm wrangler deploy
+```
 
-## 提示词设计要点（摘要）
+### 环境变量
 
-- 角色切换：通过 System/Instruction 让模型以“资深架构师”或“产品总监”的视角输出
-- 结构约束：强制 Markdown 分段与列表，避免纯叙述段落
-- 补全缺失信息：先识别输入完整度，输出追问列表/合理默认假设
-- 自动路由（可选）：未选择方向时先识别输入来自 PM 还是 DEV，再选择翻译工具链
+Workers 通过 `wrangler secret` 管理敏感配置，非敏感配置写在 `wrangler.toml`：
+
+```toml
+# apps/api/wrangler.toml
+[vars]
+OPENAI_MODEL = "gpt-4o"
+```
+
+```bash
+# 以 secret 形式存储（不入代码）
+pnpm wrangler secret put OPENAI_API_KEY
+```
+
+## AI 工具与模型选型
+
+### 大模型：OpenAI GPT-4o
+
+选择 GPT-4o 而非其他模型的理由：
+
+- **中文理解质量**：GPT-4o 在中文语境下的角色扮演和结构化输出稳定性优于同价位竞品
+- **流式响应**：原生支持 streaming，与 SSE 方案配合无额外延迟
+- **成本平衡**：相比 GPT-4o-mini 输出质量明显更高；相比 o1/o3 系列无需 reasoning token，翻译场景不需要长链推理，cost 更低
+- **API 稳定性**：OpenAI API 在 Cloudflare Workers 的 `nodejs_compat` 模式下兼容性最佳
+
+### Agent 框架：LangChain.js
+
+选择 LangChain.js 而非直接调用 SDK 的理由：
+
+- **边缘兼容**：`@langchain/openai` 支持 Cloudflare Workers 等非 Node.js 运行时，无需额外适配
+- **流式抽象**：统一的 `stream()` 接口屏蔽了不同 LLM provider 的差异，未来切换模型只改环境变量
+- **Tool 规范**：`DynamicStructuredTool` + Zod schema 提供类型安全的工具定义，与 Skills 文档天然对应
+
+### HTTP 框架：Hono（Workers 部署）+ NestJS（本地开发）
+
+- **Hono**：专为 Cloudflare Workers 设计，bundle size < 20KB，原生支持 `streamSSE`；NestJS 依赖 Node.js http server 无法直接运行在 Workers 上
+- **NestJS**：本地开发保留，模块化架构便于团队协作，`nest start --watch` 热重载体验好
+- **双入口策略**：`src/main.ts`（NestJS，本地）和 `src/worker.ts`（Hono，生产）共享同一套业务逻辑（`AgentCore`），互不干扰
+
+### 前端构建：Vite + React
+
+- Vite 产物为纯静态文件，与 Cloudflare Pages 零配置兼容
+- `_redirects` 文件处理 SPA 路由回退，无需额外 Pages Functions
+
+## 提示词设计要点
+
+- **角色切换**：System Prompt 让模型以"资深架构师"或"产品总监"视角输出，强化角色认知
+- **格式约束**：强制"一句话总结 + 更多详细信息"的两段式结构，控制输出长度（200字以内）
+- **解耦维护**：Prompt 模板独立存放于 `src/prompts/`，修改提示词不触发代码变更
+- **自动路由**：AUTO 方向时先调用 `detect_perspective` 判断视角，再路由到对应翻译函数
 
 ## 文档索引
 
-- 需求文档：`.ai/docs/requirements.md`
-- 技术文档：`.ai/docs/technical.md`
-- Skills/提示词模板：`.ai/skills/skills.md`
-- 题目说明：`docs/[AI编程题]Agent-简化版.md`
+- 需求文档：[`.ai/docs/requirements.md`](.ai/docs/requirements.md)
+- 技术文档：[`.ai/docs/technical.md`](.ai/docs/technical.md)
+- Skills 定义：[`.ai/skills/skills.md`](.ai/skills/skills.md)
+- 题目说明：[`docs/[AI编程题]Agent-简化版.md`](docs/[AI编程题]Agent-简化版.md)
