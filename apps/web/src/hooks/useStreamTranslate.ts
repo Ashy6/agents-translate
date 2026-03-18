@@ -25,7 +25,8 @@ export function useStreamTranslate() {
       ...(params.context ? { context: params.context } : {}),
     });
 
-    const es = new EventSource(`/api/translate/stream?${qs}`);
+    const apiBase = import.meta.env.VITE_API_BASE || '';
+    const es = new EventSource(`${apiBase}/api/translate/stream?${qs}`);
     esRef.current = es;
 
     es.onmessage = (e) => {

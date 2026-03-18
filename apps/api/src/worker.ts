@@ -12,10 +12,7 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-app.use('*', async (c, next) => {
-  const origin = c.env.CORS_ORIGIN || '*';
-  return cors({ origin })(c, next);
-});
+app.use('*', cors({ origin: '*' }));
 
 app.post('/api/translate', async (c) => {
   const body = await c.req.json<AgentInput>();
