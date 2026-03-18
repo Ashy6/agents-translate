@@ -1,0 +1,30 @@
+{
+  "name": "api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3",
+    "@langchain/openai": "^0.3",
+    "@nestjs/common": "^10",
+    "@nestjs/config": "^3",
+    "@nestjs/core": "^10",
+    "@nestjs/platform-express": "^10",
+    "class-transformer": "^0.5",
+    "class-validator": "^0.14",
+    "langchain": "^0.3",
+    "reflect-metadata": "^0.2",
+    "rxjs": "^7",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10",
+    "@types/node": "^20",
+    "ts-node": "^10",
+    "typescript": "^5"
+  }
+}
