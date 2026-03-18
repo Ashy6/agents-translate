@@ -1,0 +1,12 @@
+name = "agents-translate-api"
+main = "src/worker.ts"
+compatibility_date = "2025-03-18"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+OPENAI_MODEL = "gpt-4o"
+# CORS_ORIGIN 在 CF 控制台设置为前端 Pages URL，例如：
+# CORS_ORIGIN = "https://agents-translate.pages.dev"
+
+# OPENAI_API_KEY 通过 wrangler secret 设置，不写在此文件：
+# wrangler secret put OPENAI_API_KEY

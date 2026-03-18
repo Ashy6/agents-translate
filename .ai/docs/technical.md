@@ -408,7 +408,72 @@ pnpm build
 
 ---
 
-## 10. 关键技术决策说明
+## 10. Cloudflare 部署
+
+### 架构
+
+```text
+Cloudflare Pages (apps/web)
+    │  /api/* → 代理到 Worker
+    ▼
+Cloudflare Workers (apps/api/src/worker.ts)
+    │  Hono 路由 + AgentCore
+    ▼
+OpenAI API
+```
+
+### 前端 — Cloudflare Pages
+
+在 CF Pages 控制台新建项目，配置如下：
+
+| 设置项 | 值 |
+| --- | --- |
+| Build command | `pnpm --filter web build` |
+| Build output directory | `apps/web/dist` |
+| Root directory | `/`（仓库根目录） |
+
+SPA 路由回退已通过 `apps/web/public/_redirects` 配置。
+
+### 后端 — Cloudflare Workers
+
+#### 1. 登录并部署
+
+```bash
+cd apps/api
+
+# 首次登录
+pnpm wrangler login
+
+# 设置 API Key（以 secret 形式，不入代码）
+pnpm wrangler secret put OPENAI_API_KEY
+
+# 部署 Worker
+pnpm deploy
+```
+
+#### 2. 设置 CORS_ORIGIN
+
+Worker 部署完成后，在 CF 控制台 → Workers → agents-translate-api → Settings → Variables 中添加：
+
+```text
+CORS_ORIGIN = https://<你的-Pages-域名>.pages.dev
+```
+
+#### 3. 前端配置 API 地址
+
+在 CF Pages 项目的环境变量中添加，并在 `apps/web/vite.config.ts` 的生产环境中将 API 请求指向 Worker URL（或使用 Pages 的 `_routes.json` 代理）。
+
+### 关键文件
+
+| 文件 | 说明 |
+| --- | --- |
+| `apps/api/src/worker.ts` | CF Worker 入口（Hono） |
+| `apps/api/wrangler.toml` | Worker 配置 |
+| `apps/web/public/_redirects` | Pages SPA 路由回退 |
+
+---
+
+## 11. 关键技术决策说明
 
 | 决策        | 选择               | 原因                                  |
 | ----------- | ------------------ | ------------------------------------- |

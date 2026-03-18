@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
@@ -28,21 +28,13 @@ export interface DetectResult {
   reason: string;
 }
 
-@Injectable()
-export class AgentService implements OnModuleInit {
+// 框架无关的核心实现，同时支持 NestJS 和 Cloudflare Workers
+export class AgentCore {
   private llm: ChatOpenAI;
   private llmStream: ChatOpenAI;
 
-  constructor(private config: ConfigService) {}
-
-  onModuleInit() {
-    const apiKey = this.config.get<string>('OPENAI_API_KEY');
-    const model = this.config.get<string>('OPENAI_MODEL') || 'gpt-4o';
-
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is not set in environment variables');
-    }
-
+  constructor(apiKey: string, model: string = 'gpt-4o') {
+    if (!apiKey) throw new Error('OPENAI_API_KEY is required');
     this.llm = new ChatOpenAI({ apiKey, model, temperature: 0.3 });
     this.llmStream = new ChatOpenAI({ apiKey, model, temperature: 0.3, streaming: true });
   }
@@ -56,9 +48,7 @@ export class AgentService implements OnModuleInit {
     try {
       const text = response.content as string;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]) as DetectResult;
-      }
+      if (jsonMatch) return JSON.parse(jsonMatch[0]) as DetectResult;
     } catch {
       // fallback
     }
@@ -82,14 +72,8 @@ export class AgentService implements OnModuleInit {
 
     const [systemPrompt, userPrompt] =
       resolvedDirection === 'PM_TO_DEV'
-        ? [
-            TRANSLATE_TO_DEVELOPER_SYSTEM,
-            translateToDeveloperUserPrompt(input.content, input.context),
-          ]
-        : [
-            TRANSLATE_TO_PRODUCT_SYSTEM,
-            translateToProductUserPrompt(input.content, input.context),
-          ];
+        ? [TRANSLATE_TO_DEVELOPER_SYSTEM, translateToDeveloperUserPrompt(input.content, input.context)]
+        : [TRANSLATE_TO_PRODUCT_SYSTEM, translateToProductUserPrompt(input.content, input.context)];
 
     const stream = await this.llmStream.stream([
       new SystemMessage(systemPrompt),
@@ -98,17 +82,23 @@ export class AgentService implements OnModuleInit {
 
     for await (const chunk of stream) {
       const text = chunk.content;
-      if (typeof text === 'string' && text) {
-        yield text;
-      }
+      if (typeof text === 'string' && text) yield text;
     }
   }
 
   async invoke(input: AgentInput): Promise<string> {
     let chunks = '';
-    for await (const chunk of this.stream(input)) {
-      chunks += chunk;
-    }
+    for await (const chunk of this.stream(input)) chunks += chunk;
     return chunks;
+  }
+}
+
+// NestJS Injectable 包装，供本地开发使用
+@Injectable()
+export class AgentService extends AgentCore {
+  constructor(config: ConfigService) {
+    const apiKey = config.get<string>('OPENAI_API_KEY') ?? '';
+    const model = config.get<string>('OPENAI_MODEL') ?? 'gpt-4o';
+    super(apiKey, model);
   }
 }

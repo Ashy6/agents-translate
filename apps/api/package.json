@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
+    "dev:worker": "wrangler dev",
     "build": "nest build",
+    "deploy": "wrangler deploy",
     "start": "node dist/main"
   },
   "dependencies": {
+    "hono": "^4",
     "@langchain/core": "^0.3",
     "@langchain/openai": "^0.3",
     "@nestjs/common": "^10",
@@ -22,9 +25,11 @@
     "zod": "^3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4",
     "@nestjs/cli": "^10",
     "@types/node": "^20",
     "ts-node": "^10",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^3"
   }
 }
