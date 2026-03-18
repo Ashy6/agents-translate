@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Direction, DIRECTION_LABELS } from '../types/translate';
 import { useStreamTranslate } from '../hooks/useStreamTranslate';
 import { DirectionSelector } from './DirectionSelector';
@@ -11,20 +11,60 @@ const PLACEHOLDERS: Record<Direction, string> = {
   AUTO: '输入需求描述或技术方案，系统将自动识别...',
 };
 
+type Session = { content: string; output: string };
+const emptySession = (): Session => ({ content: '', output: '' });
+
 export function TranslatePanel() {
   const [direction, setDirection] = useState<Direction>('PM_TO_DEV');
-  const [content, setContent] = useState('');
+  const [sessions, setSessions] = useState<Record<Direction, Session>>({
+    PM_TO_DEV: emptySession(),
+    DEV_TO_PM: emptySession(),
+    AUTO: emptySession(),
+  });
+
   const { output, isStreaming, error, translate, stop } = useStreamTranslate();
 
+  // 流式结束后把结果存入当前方向的 session
+  const prevIsStreaming = useRef(false);
+  useEffect(() => {
+    if (prevIsStreaming.current && !isStreaming && output) {
+      setSessions((prev) => ({
+        ...prev,
+        [direction]: { ...prev[direction], output },
+      }));
+    }
+    prevIsStreaming.current = isStreaming;
+  }, [isStreaming, output, direction]);
+
+  const currentSession = sessions[direction];
+  const displayOutput = isStreaming ? output : currentSession.output;
+
+  const handleDirectionChange = (next: Direction) => {
+    if (isStreaming) stop();
+    setDirection(next);
+  };
+
+  const handleContentChange = (value: string) => {
+    setSessions((prev) => ({
+      ...prev,
+      [direction]: { ...prev[direction], content: value },
+    }));
+  };
+
+  const handleClear = () => {
+    setSessions((prev) => ({
+      ...prev,
+      [direction]: emptySession(),
+    }));
+  };
+
   const handleSubmit = () => {
-    if (!content.trim() || isStreaming) return;
-    translate({ content, direction });
+    if (!currentSession.content.trim() || isStreaming) return;
+    translate({ content: currentSession.content, direction });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      handleSubmit();
-    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
   };
 
   return (
@@ -32,14 +72,15 @@ export function TranslatePanel() {
       {/* 方向选择 */}
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-gray-600 whitespace-nowrap">翻译方向</span>
-        <DirectionSelector value={direction} onChange={setDirection} />
+        <DirectionSelector value={direction} onChange={handleDirectionChange} disabled={isStreaming} />
       </div>
 
       {/* 输入区 */}
       <div onKeyDown={handleKeyDown}>
         <InputArea
-          value={content}
-          onChange={setContent}
+          value={currentSession.content}
+          onChange={handleContentChange}
+          onClear={handleClear}
           placeholder={PLACEHOLDERS[direction]}
           disabled={isStreaming}
         />
@@ -59,7 +100,7 @@ export function TranslatePanel() {
           )}
           <button
             onClick={handleSubmit}
-            disabled={!content.trim() || isStreaming}
+            disabled={!currentSession.content.trim() || isStreaming}
             className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           >
             {isStreaming ? (
@@ -85,12 +126,12 @@ export function TranslatePanel() {
       <div>
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-600">
-            {output || isStreaming
+            {displayOutput || isStreaming
               ? `翻译结果（${direction === 'PM_TO_DEV' ? '产品 → 开发' : direction === 'DEV_TO_PM' ? '开发 → 产品' : DIRECTION_LABELS[direction]}）`
               : '翻译结果'}
           </span>
         </div>
-        <OutputArea content={output} isStreaming={isStreaming} />
+        <OutputArea content={displayOutput} isStreaming={isStreaming} />
       </div>
     </div>
   );
